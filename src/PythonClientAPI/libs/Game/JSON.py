@@ -101,8 +101,7 @@ def as_tiles(dct):
 
 
 def as_control_point_core(dct, enemies):
-    return ControlPoint(as_point(dct['position']), Team[dct['controllingTeam']], dct['name'], dct['isMainframe'],
-                        enemies)
+    return ControlPoint(as_point(dct['position']), Team[dct['controllingTeam']], dct['name'], enemies, dct['isMainframe'])
 
 
 def as_control_point_core_list(dct, enemies):

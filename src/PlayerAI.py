@@ -2,8 +2,7 @@ from PythonClientAPI.libs.Game import PointUtils
 from PythonClientAPI.libs.Game.Enums import *
 from PythonClientAPI.libs.Game.Entities import *
 from PythonClientAPI.libs.Game.World import *
-import sys
-print(sys.path)
+
 
 class PlayerAI:
     def __init__(self):
@@ -18,5 +17,3 @@ class PlayerAI:
         :param list[FriendlyUnit] friendly_units: An array of all 4 units on your team. Their order won't change.
         """
         pass
-
-    

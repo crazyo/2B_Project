@@ -109,10 +109,10 @@ class TileType(Enum):
 
 
 class WeaponType(Enum):
-    MINI_BLASTER = (4, 5)
-    SCATTER_GUN = (2, 30)
-    LASER_RIFLE = (5, 15)
-    RAIL_GUN = (10, 10)
+    MINI_BLASTER = (5, 4)
+    SCATTER_GUN = (2, 25)
+    LASER_RIFLE = (4, 8)
+    RAIL_GUN = (10, 6)
 
     def get_range(self):
         return self.value[0]

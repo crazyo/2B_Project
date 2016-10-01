@@ -1,9 +1,0 @@
-[1189166] Using port 4461
-Server waiting for client
-Connected player with UUID src
-Assigned index 0 (Amber)
-[0] src (Comm open) - sending GET_READY...
-[0] src (Comm open) - Ready!
-[1191813] Asking 1 for move
-[1191813] Asking 0 for move
-[1191839] Got 0's move
