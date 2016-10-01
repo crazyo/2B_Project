@@ -5,15 +5,11 @@ from PythonClientAPI.libs.Game.World import *
 
 
 class PlayerAI:
+
     def __init__(self):
         pass
 
     def do_move(self, world, enemy_units, friendly_units):
-        """
-        This method will get called every turn; Your glorious AI code goes here.
-        
-        :param World world: The latest state of the world.
-        :param list[EnemyUnit] enemy_units: An array of all 4 units on the enemy team. Their order won't change.
-        :param list[FriendlyUnit] friendly_units: An array of all 4 units on your team. Their order won't change.
-        """
-        pass
+        for i in range(4):
+            cp_loc = world.get_nearest_control_point(friendly_units[i].position).position
+            friendly_units[i].move(world.get_next_direction_in_path(friendly_units[i].position, cp_loc))
