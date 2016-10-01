@@ -1,1 +1,0 @@
-java -jar Launcher.jar $* 

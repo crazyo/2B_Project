@@ -1,7 +1,0 @@
-PointUtils module
-=================
-
-.. automodule:: PointUtils
-    :members:
-    :undoc-members:
-    :show-inheritance:

@@ -1,7 +1,0 @@
-Entities module
-===============
-
-.. automodule:: Entities
-    :members:
-    :undoc-members:
-    :show-inheritance:

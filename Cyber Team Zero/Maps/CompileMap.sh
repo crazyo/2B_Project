@@ -1,1 +1,0 @@
-java -jar CTZ-MapCompiler.jar $*
