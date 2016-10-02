@@ -110,8 +110,8 @@ def _get_enemy_utility(world, tile_pos, enemy_units):
     print("_get_enemy_utility:" + str(utility))
     return -1 * utility
 
-
-
+# TODO:
+#   consider multiple enemies and multiple allies?
 def _can_beat(unit, enemy):
     if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
         if enemy.current_weapon_type.get_range() < PU.chebyshev_distance(unit.position, enemy.position):
@@ -151,7 +151,7 @@ class PlayerAI:
             #   need to calculate utility as well actually
             shot = False
             for enemy in enemy_units:
-                if _can_beat(unit, enemy):
+                if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
                     unit.shoot_at(enemy)
                     shot = True
                     break
@@ -198,6 +198,8 @@ class PlayerAI:
             # got nothing better to do, might as well fire!
             shot = False
             for enemy in enemy_units:
+                # TODO:
+                #   pick the weakest enemy!
                 if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
                     unit.shoot_at(enemy)
                     shot = True
@@ -311,3 +313,13 @@ class PlayerAI:
         else:
             return check_shot
 
+
+
+
+''' TODO List:
+0. enemy utility
+1. shield activation
+2. team strategy - move strongest to enemy's weakest
+3. weapon choice
+4. hide behind shielded ally
+'''
