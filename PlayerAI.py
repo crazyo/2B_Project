@@ -16,7 +16,7 @@ OUR_TEAM = None
 # utility constants and functions #
 ###################################
 BASE_UTILITY_MAINFRAME = 200
-def _get_mainframe_utility(world):
+def _get_mainframe_utility(world, unit):
     ''' TODO:
     mainframe utility should change in respect of:
         1. the number of mainframe we have captured
@@ -43,36 +43,42 @@ def _get_mainframe_utility(world):
         return BASE_UTILITY_MAINFRAME
 
 BASE_UTILITY_CONTROL_POINT = 100
-def _get_control_point_utility(world):
+def _get_control_point_utility(world, unit):
     ''' TODO:
     control point utility should change in respect of:
         1. the controlling team of the control point
         2. the game phase (the ability to score points elsewhere)
     '''
+    if not world.pickups:
+        return BASE_UTILITY_CONTROL_POINT * 2
     return BASE_UTILITY_CONTROL_POINT
 
 BASE_UTILITY_REPAIR_KIT = 50
-def _get_repair_kit_utility(world):
+def _get_repair_kit_utility(world, unit):
     ''' TODO:
     repair kit utility should change in respect of:
         1. how many health points this unit has left
         2. whether this repair kit could be saved for another ally
         3. whether this repair kit would be taken by an enemy
     '''
+    if unit.health < 10:
+        return BASE_UTILITY_REPAIR_KIT * 5
     return BASE_UTILITY_REPAIR_KIT
 
-BASE_UTILITY_SHIELD = 30
-def _get_shield_utility(world):
+BASE_UTILITY_SHIELD = 50
+def _get_shield_utility(world, unit):
     ''' TODO:
     shield utility should change in respect of:
         1. how many shield this unit already has
         2. whether this shield could be saved for another ally
         3. whether this shield would be taken by an enemy
     '''
+    if unit.num_shields > 1:
+        return BASE_UTILITY_SHIELD / 2
     return BASE_UTILITY_SHIELD
 
 BASE_UTILITY_WEAPON = 20
-def _get_weapon_utility(world):
+def _get_weapon_utility(world, unit):
     ''' TODO:
     weapon utility should change in respect of:
         1. the weapon type
@@ -83,7 +89,7 @@ def _get_weapon_utility(world):
     '''
     return BASE_UTILITY_WEAPON
 
-def _get_to_control_point_utility(world, tile_pos):
+def _get_to_control_point_utility(world, tile_pos, unit):
     utility = 0
     for cp in world.control_points:
         # TODO:
@@ -93,14 +99,14 @@ def _get_to_control_point_utility(world, tile_pos):
         distance = world.get_path_length(tile_pos, cp.position)
         _get = _get_mainframe_utility if cp.is_mainframe else _get_control_point_utility
         if distance:
-            utility += (_get(world) / distance) ** 2
+            utility += (_get(world, unit) / distance) ** 2
         # TODO:
         #   should consider taking the tile that control point is on if
         #   there are enemies around so as to occupy more spots
         #   which is considering distance == 0
     return utility
 
-def _get_to_pickup_utility(world, tile_pos):
+def _get_to_pickup_utility(world, tile_pos, unit):
     utility = 0
     for pickup in world.pickups:
         distance = world.get_path_length(tile_pos, pickup.position)
@@ -108,9 +114,9 @@ def _get_to_pickup_utility(world, tile_pos):
             _get_shield_utility if pickup.pickup_type == PickupType.SHIELD else \
             _get_weapon_utility
         if distance:
-            utility += (_get(world) / distance) ** 2
+            utility += (_get(world, unit) / distance) ** 2
         else:
-            utility += _get(world) ** 2 * 2
+            utility += _get(world, unit) ** 2 * 2
     return utility
 
 
@@ -316,8 +322,8 @@ class PlayerAI:
                 {
                     "unit_index": i,
                     "position": neighbour,
-                    "utility": _get_to_control_point_utility(world, neighbour) +
-                    _get_to_pickup_utility(world, neighbour) - _get_enemy_utility(world, unit, neighbour, enemy_units)
+                    "utility": _get_to_control_point_utility(world, neighbour, unit) +
+                    _get_to_pickup_utility(world, neighbour, unit) - _get_enemy_utility(world, unit, neighbour, enemy_units)
                 } for neighbour in neighbours if unit.check_move_in_direction(
                     Direction.from_to(unit.position, neighbour)
                 ) == MoveResult.MOVE_VALID
