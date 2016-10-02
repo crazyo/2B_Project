@@ -36,7 +36,7 @@ def _get_mainframe_utility(world, unit):
         else:
             number_of_enemy_mainframes += 1
     if not number_of_ally_mainframes:
-        return BASE_UTILITY_MAINFRAME * 2
+        return BASE_UTILITY_MAINFRAME * 3
     elif number_of_enemy_mainframes == 1 and number_of_neutral_mainframes <= 1:
         return BASE_UTILITY_MAINFRAME * 2
     else:
@@ -243,28 +243,28 @@ class PlayerAI:
         for i in range(len(friendly_units)):
             unit = friendly_units[i]
 
-            # # when shield is on, go to allies
-            # if unit.shielded_turns_remaining:
-            #     all_moving_units.append(i)
-            #     neighbours = [(unit.position[0] - 1, unit.position[1] - 1),
-            #                   (unit.position[0] - 1, unit.position[1]),
-            #                   (unit.position[0] - 1, unit.position[1] + 1),
-            #                   (unit.position[0], unit.position[1] - 1),
-            #                   (unit.position[0], unit.position[1] + 1),
-            #                   (unit.position[0] + 1, unit.position[1] - 1),
-            #                   (unit.position[0] + 1, unit.position[1]),
-            #                   (unit.position[0] + 1, unit.position[1] + 1)]
-            #     neighbour_maps_for_current_unit = [
-            #         {
-            #             "unit_index": i,
-            #             "position": neighbour,
-            #             "utility": _get_to_ally_utility(world, friendly_units, i)
-            #         } for neighbour in neighbours if unit.check_move_in_direction(
-            #             Direction.from_to(unit.position, neighbour)
-            #         ) == MoveResult.MOVE_VALID
-            #     ]
-            #     neighbour_maps_for_all_moving_units.extend(neighbour_maps_for_current_unit)
-            #     continue
+            # when shield is on, go to allies
+            if unit.shielded_turns_remaining:
+                all_moving_units.append(i)
+                neighbours = [(unit.position[0] - 1, unit.position[1] - 1),
+                              (unit.position[0] - 1, unit.position[1]),
+                              (unit.position[0] - 1, unit.position[1] + 1),
+                              (unit.position[0], unit.position[1] - 1),
+                              (unit.position[0], unit.position[1] + 1),
+                              (unit.position[0] + 1, unit.position[1] - 1),
+                              (unit.position[0] + 1, unit.position[1]),
+                              (unit.position[0] + 1, unit.position[1] + 1)]
+                neighbour_maps_for_current_unit = [
+                    {
+                        "unit_index": i,
+                        "position": neighbour,
+                        "utility": _get_to_ally_utility(world, friendly_units, i)
+                    } for neighbour in neighbours if unit.check_move_in_direction(
+                        Direction.from_to(unit.position, neighbour)
+                    ) == MoveResult.MOVE_VALID
+                ]
+                neighbour_maps_for_all_moving_units.extend(neighbour_maps_for_current_unit)
+                continue
 
             # activate shield if the unit could die
             if _could_die(world, unit, enemy_units) and \
