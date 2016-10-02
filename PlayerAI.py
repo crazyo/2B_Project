@@ -72,9 +72,7 @@ def _get_to_control_point_utility(world, tile_pos):
         #   should I skip control points I already own?
         if cp.controlling_team == OUR_TEAM:
             continue
-        # TODO:
-        #   this is a private method, can I actually use it?
-        distance = world._get_next_direction_in_path_and_length(tile_pos, cp.position, True)[1]
+        distance = world.get_path_length(tile_pos, cp.position)
         _get = _get_mainframe_utility if cp.is_mainframe else _get_control_point_utility
         if distance:
             utility += (_get(world) / distance) ** 2
@@ -88,9 +86,7 @@ def _get_to_control_point_utility(world, tile_pos):
 def _get_to_pickup_utility(world, tile_pos):
     utility = 0
     for pickup in world.pickups:
-        # TODO:
-        #   this is a private method, can I actually use it?
-        distance = world._get_next_direction_in_path_and_length(tile_pos, pickup.position, True)[1]
+        distance = world.get_path_length(tile_pos, pickup.position)
         _get = _get_repair_kit_utility if pickup.pickup_type == PickupType.REPAIR_KIT else \
             _get_shield_utility if pickup.pickup_type == PickupType.SHIELD else \
             _get_weapon_utility
@@ -126,16 +122,25 @@ def _can_beat(unit, enemy):
             return True
     return False
 
+
 class PlayerAI:
 
     def __init__(self):
         pass
 
     def do_move(self, world, enemy_units, friendly_units):
+        # initialization work
         global OUR_TEAM
         OUR_TEAM = friendly_units[0].team
 
-        for unit in friendly_units:
+        # list of maps where each map has 3 attributes:
+        #     "position": the tile position of this neighbour;
+        #     "utility": the utility of this tile;
+        #     "unit_index": which unit does this neighbour belong to
+        all_moving_units = []
+        neighbour_maps_for_all_moving_units = []
+        for i in range(len(friendly_units)):
+            unit = friendly_units[i]
             # pick up any pickup if unit is on the tile
             if unit.check_pickup_result() == PickupResult.PICK_UP_VALID:
                 unit.pickup_item_at_position()
@@ -153,6 +158,8 @@ class PlayerAI:
             if shot:
                 continue
 
+            # moving...
+            all_moving_units.append(i)
             neighbours = [(unit.position[0] - 1, unit.position[1] - 1),
                           (unit.position[0] - 1, unit.position[1]),
                           (unit.position[0] - 1, unit.position[1] + 1),
@@ -161,24 +168,34 @@ class PlayerAI:
                           (unit.position[0] + 1, unit.position[1] - 1),
                           (unit.position[0] + 1, unit.position[1]),
                           (unit.position[0] + 1, unit.position[1] + 1)]
-            neighbour_direction_map = {}
-            for neighbour in neighbours:
-                neighbour_direction_map[neighbour] = Direction.from_to(unit.position, neighbour)
+            neighbour_maps_for_current_unit = [
+                {
+                    "unit_index": i,
+                    "position": neighbour,
+                    "utility": _get_to_control_point_utility(world, neighbour) +
+                    _get_to_pickup_utility(world, neighbour)
+                } for neighbour in neighbours if unit.check_move_in_direction(
+                    Direction.from_to(unit.position, neighbour)
+                ) == MoveResult.MOVE_VALID
+            ]
+            neighbour_maps_for_all_moving_units.extend(neighbour_maps_for_current_unit)
 
-            best_neighbour_utility = SMALLEST_NUMBER
-            best_neighbour_direction = None
-            for neighbour, direction in neighbour_direction_map.items():
-                if world.can_move_from_point_in_direction(unit.position, direction):
-                    utility = _get_to_control_point_utility(world, neighbour) + \
-                        _get_to_pickup_utility(world, neighbour)
-                    if utility > best_neighbour_utility:
-                        best_neighbour_utility = utility
-                        best_neighbour_direction = direction
+        # assign move for each unit considering corporation
+        visited_tiles = []
+        neighbour_maps_for_all_moving_units.sort(key=lambda x: x["utility"], reverse=True)
+        for neighbour in neighbour_maps_for_all_moving_units:
+            if (neighbour["unit_index"] not in all_moving_units or
+                neighbour["position"] in visited_tiles):
+                continue
+            unit = friendly_units[neighbour["unit_index"]]
+            direction = Direction.from_to(unit.position, neighbour["position"])
+            unit.move(direction)
+            visited_tiles.append(neighbour["position"])
+            all_moving_units.remove(neighbour["unit_index"])
+        for unit_index in all_moving_units:
+            friendly_units[unit_index].standby()
+            print("unit {} does not know what to do...".format(friendly_units[unit_index].call_sign))
 
-            if best_neighbour_direction:
-                unit.move(best_neighbour_direction)
-            else:
-                unit.standby()
 
     @staticmethod
     def find_weakest_unit(units):
