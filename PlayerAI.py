@@ -80,6 +80,7 @@ def _get_to_control_point_utility(world, tile_pos):
         #   should consider taking the tile that control point is on if
         #   there are enemies around so as to occupy more spots
         #   which is considering distance == 0
+    print("_get_to_control_point_utility:" + str(utility))
     return utility
 
 def _get_to_pickup_utility(world, tile_pos):
@@ -93,7 +94,23 @@ def _get_to_pickup_utility(world, tile_pos):
             utility += (_get(world) / distance) ** 2
         else:
             utility += _get(world) ** 2 * 2
+    print("_get_to_pickup_utility:" + str(utility))
     return utility
+
+
+def _get_enemy_utility(world, tile_pos, enemy_units):
+    utility =  0
+    for enemy in enemy_units:
+        distance = world.get_path_length(tile_pos, enemy.position)
+        enemy_power = PlayerAI.get_indivadule_power_value(world, enemy, tile_pos)
+        if distance:
+            utility += (enemy_power/distance) ** 2
+        else:
+            utility += enemy_power ** 2 * 2
+    print("_get_enemy_utility:" + str(utility))
+    return -1 * utility
+
+
 
 def _can_beat(unit, enemy):
     if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
@@ -258,26 +275,27 @@ class PlayerAI:
         return density
 
 
+    BASE_UTILITY_SHIELD_POWER_PER_TURN = 10
     @staticmethod
-    def get_indivadule_power_value(unit, range):
+    def get_indivadule_power_value(world, enemy_unit,position):
         '''
         Returns: the unit's power value based on HP, Sailed and Weapon
         '''
 
-
-        weapon_point = _get_damage_by_weapon(unit.weaponType, range)
-        sheild_turn_point = unit.shielded_turns_remaining ** weapon_point
-        sheild_number_point = unit.num_shields *  sheild_turn_point * 5
-        HP_point = unit.health
+        weapon_point = PlayerAI._get_damage_by_weapon(enemy_unit.current_weapon_type)
+        # if the enemy unit can hit the friendly unit
+        if ProjectileWeapon.check_shot_against_point(enemy_unit, position, world, enemy_unit.current_weapon_type):
+            weapon_point = weapon_point * 10
+        sheild_turn_point = enemy_unit.shielded_turns_remaining * PlayerAI.BASE_UTILITY_SHIELD_POWER_PER_TURN
+        sheild_number_point = enemy_unit.num_shields *  sheild_turn_point * 5
+        HP_point = enemy_unit.health
         total_point = weapon_point + sheild_turn_point + sheild_number_point + HP_point
+
         return total_point
 
     @staticmethod
-    def _get_damage_by_weapon(weapon_type, range):
-        if weapon_type[0] >= range:
-            return weapon_type[1]
-        else :
-            return 0
+    def _get_damage_by_weapon(weapon_type):
+        return weapon_type.value[1]
 
     '''
     Attacking functions
