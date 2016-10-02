@@ -1,5 +1,6 @@
 import math
 import copy
+
 from PythonClientAPI.libs.Game import PointUtils as PU
 from PythonClientAPI.libs.Game.Entities import *
 from PythonClientAPI.libs.Game.Enums import *
@@ -8,6 +9,7 @@ from PythonClientAPI.libs.Game.World import *
 
 # just need a number that is small enough
 SMALLEST_NUMBER = -100000
+BIGGEST_NUMBER = 100000
 OUR_TEAM = None
 
 ###################################
@@ -81,7 +83,6 @@ def _get_weapon_utility(world):
     '''
     return BASE_UTILITY_WEAPON
 
-
 def _get_to_control_point_utility(world, tile_pos):
     utility = 0
     for cp in world.control_points:
@@ -113,10 +114,37 @@ def _get_to_pickup_utility(world, tile_pos):
     return utility
 
 
+def _get_to_enemy_utility(world, tile_pos, unit, enemies):
+    return 0
+
+def _get_to_ally_utility(world, friendly_units, cur_index):
+    utility = 0
+    unit = friendly_units[cur_index]
+    for i in range(len(friendly_units)):
+        if i == cur_index:
+            continue
+        ally_unit = friendly_units[i]
+        distance = world.get_path_length(unit.position, ally_unit.position)
+        if distance:
+            utility += (200 / distance) ** 2
+    return utility
+
+
+
 def _get_enemy_utility(world, friendly_unit, neighbour, enemy_units):
     utility =  0
     potential_friendly_unit = copy.copy(friendly_unit)
     potential_friendly_unit.position = neighbour
+
+
+    attacking_enemies = _find_attacking_enemy(world, friendly_unit, enemy_units)
+
+    total_potential_damage = 0
+    for ele in attacking_enemies:
+        total_potential_damage += ele.current_weapon_type.get_damage() * len(attacking_enemies)
+    enemy_team_work_point = total_potential_damage * len(attacking_enemies)
+    utility += enemy_team_work_point * 2
+    print(enemy_team_work_point)
     for enemy in enemy_units:
         distance = world.get_path_length(neighbour, enemy.position)
         enemy_power = PlayerAI.get_indivadule_power_value(world, enemy, potential_friendly_unit)
@@ -124,41 +152,8 @@ def _get_enemy_utility(world, friendly_unit, neighbour, enemy_units):
             utility += (enemy_power/distance) ** 2
         else:
             utility += enemy_power ** 2 * 2
+    print("total:" + str(utility))
     return utility
-
-# TODO:
-#   consider multiple enemies and multiple allies?
-def _can_beat(unit, enemy):
-    if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
-        if enemy.current_weapon_type.get_range() < PU.chebyshev_distance(unit.position, enemy.position):
-            return True
-        num_unit_round = math.ceil(enemy.health / unit.current_weapon_type.get_damage())
-        num_enemy_round = math.ceil(unit.health / enemy.current_weapon_type.get_damage())
-        if num_unit_round <= num_enemy_round:
-            return True
-    return False
-
-
-def _activate_sheild(world, unit, enemy_unites):
-    shooters = unit.get_last_turn_shooters()
-    attacking_enemies = _find_attacking_enemy(world, unit, enemy_unites)
-    total_potential_damage = 0
-    for ele in attacking_enemies:
-        total_potential_damage += ele.current_weapon_type.get_damage() * len(attacking_enemies)
-    print(total_potential_damage)
-    print(unit.health)
-    if (total_potential_damage >= unit.health):
-        print(unit.health)
-        print("hey, needs to activate")
-        # Check if a shield is already active before we activate a new one
-        if (unit.check_shield_activation() == ActivateShieldResult.SHIELD_ACTIVATION_VALID and
-            not unit.shielded_turns_remaining):
-            # Activate a shield
-            print("activating")
-            unit.activate_shield()
-            return True
-    return False
-
 
 def _find_attacking_enemy(world, unit, enemy_units):
     '''
@@ -171,6 +166,56 @@ def _find_attacking_enemy(world, unit, enemy_units):
     return attacking_enemies
 
 
+def _can_beat(world, unit, enemy):
+    if unit.shielded_turns_remaining or enemy.shielded_turns_remaining:
+        return False
+    if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
+        if ProjectileWeapon.check_shot_against_point(enemy, unit.position, world, enemy.current_weapon_type) != ShotResult.CAN_HIT_ENEMY:
+            return True
+        num_unit_round = math.ceil(enemy.health / unit.current_weapon_type.get_damage())
+        num_enemy_round = math.ceil(unit.health / enemy.current_weapon_type.get_damage())
+        if num_unit_round <= num_enemy_round:
+            return True
+    return False
+
+def _can_hit(unit, enemy):
+    if unit.shielded_turns_remaining or enemy.shielded_turns_remaining:
+        return False
+    return unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY
+
+def _will_be_beaten(world, unit, enemy):
+    if unit.shielded_turns_remaining or enemy.shielded_turns_remaining:
+        return False
+    if ProjectileWeapon.check_shot_against_point(enemy, unit.position, world, enemy.current_weapon_type) != ShotResult.CAN_HIT_ENEMY:
+        return False
+    num_unit_round = math.ceil(enemy.health / unit.current_weapon_type.get_damage())
+    num_enemy_round = math.ceil(unit.health / enemy.current_weapon_type.get_damage())
+    if num_unit_round > num_enemy_round:
+        return True
+    return False
+
+def _could_die(world, unit, enemy_units):
+    if unit.shielded_turns_remaining:
+        return False
+    potential_total_damage = 0
+    potential_total_attacking_enemies = 0
+    for enemy in enemy_units:
+        if enemy.health <= 0 or enemy.shielded_turns_remaining:
+            continue
+        if ProjectileWeapon.check_shot_against_point(enemy, unit.position, world, enemy.current_weapon_type) == ShotResult.CAN_HIT_ENEMY:
+            potential_total_damage += enemy.current_weapon_type.get_damage()
+            potential_total_attacking_enemies += 1
+    potential_total_damage *= potential_total_attacking_enemies
+    if potential_total_damage >= unit.health:
+        return True
+    return False
+
+
+def _get_to_fire_target_utility(world, neighbour, target):
+    target_utility = 200
+    distance = world.get_path_length(neighbour, target.position)
+    if distance:
+        return (target_utility / distance) ** 2
 
 
 class PlayerAI:
@@ -189,31 +234,73 @@ class PlayerAI:
         #     "unit_index": which unit does this neighbour belong to
         all_moving_units = []
         neighbour_maps_for_all_moving_units = []
+        current_fire_target = None
         for i in range(len(friendly_units)):
             unit = friendly_units[i]
+
+            # when shield is on, go to allies
+            if unit.shielded_turns_remaining:
+                all_moving_units.append(i)
+                neighbours = [(unit.position[0] - 1, unit.position[1] - 1),
+                              (unit.position[0] - 1, unit.position[1]),
+                              (unit.position[0] - 1, unit.position[1] + 1),
+                              (unit.position[0], unit.position[1] - 1),
+                              (unit.position[0], unit.position[1] + 1),
+                              (unit.position[0] + 1, unit.position[1] - 1),
+                              (unit.position[0] + 1, unit.position[1]),
+                              (unit.position[0] + 1, unit.position[1] + 1)]
+                neighbour_maps_for_current_unit = [
+                    {
+                        "unit_index": i,
+                        "position": neighbour,
+                        "utility": _get_to_ally_utility(world, friendly_units, i)
+                    } for neighbour in neighbours if unit.check_move_in_direction(
+                        Direction.from_to(unit.position, neighbour)
+                    ) == MoveResult.MOVE_VALID
+                ]
+                neighbour_maps_for_all_moving_units.extend(neighbour_maps_for_current_unit)
+                continue
+
+            # activate shield if the unit could die
+            if _could_die(world, unit, enemy_units) and \
+                    unit.check_shield_activation() == ActivateShieldResult.SHIELD_ACTIVATION_VALID:
+                unit.activate_shield()
+                continue
 
             # pick up any pickup if unit is on the tile
             if unit.check_pickup_result() == PickupResult.PICK_UP_VALID:
                 unit.pickup_item_at_position()
                 continue
 
-            if _activate_sheild(world, unit, enemy_units):
-                continue
-
             # shoot any enemy that is in range
             # TODO:
             #   need to calculate utility as well actually
-            shot = False
+            move_taken = False
             for enemy in enemy_units:
-                if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY and unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
-                    unit.shoot_at(enemy)
-                    shot = True
+                # if shield is on, no fire!
+                if unit.shielded_turns_remaining:
                     break
-            if shot:
+                # if enemy's shield is on, it is no difference from a wall
+                if enemy.shielded_turns_remaining:
+                    continue
+                if _can_beat(world, unit, enemy):
+                    unit.shoot_at(enemy)
+                    current_fire_target = enemy
+                    move_taken = True
+                    break
+                elif _will_be_beaten(world, unit, enemy) and \
+                        enemy in unit.get_last_turn_shooters() and \
+                        unit.check_shield_activation() == ActivateShieldResult.SHIELD_ACTIVATION_VALID:
+                    unit.activate_shield()
+                    move_taken = True
+                    break
+                elif _can_hit(unit, enemy):
+                    unit.shoot_at(enemy)
+                    current_fire_target = enemy
+                    move_taken = True
+                    break
+            if move_taken:
                 continue
-
-
-
 
             # moving...
             all_moving_units.append(i)
@@ -235,6 +322,9 @@ class PlayerAI:
                     Direction.from_to(unit.position, neighbour)
                 ) == MoveResult.MOVE_VALID
             ]
+            # if current_fire_target:
+            #     for neightbour_map in neighbour_maps_for_current_unit:
+            #         neightbour_map["utility"] += _get_to_fire_target_utility(world, neighbour, current_fire_target)
             neighbour_maps_for_all_moving_units.extend(neighbour_maps_for_current_unit)
 
         # assign move for each unit considering corporation
@@ -254,17 +344,33 @@ class PlayerAI:
         for unit_index in all_moving_units:
             unit = friendly_units[unit_index]
             # got nothing better to do, might as well fire!
-            shot = False
+            move_taken = False
             for enemy in enemy_units:
-                # TODO:
-                #   pick the weakest enemy!
-                if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
+                # if shield is on, no fire!
+                if unit.shielded_turns_remaining:
+                    break
+                # if enemy's shield is on, it is no difference from a wall
+                if enemy.shielded_turns_remaining:
+                    continue
+                if _can_beat(world, unit, enemy):
                     unit.shoot_at(enemy)
-                    shot = True
+                    move_taken = True
+                    break
+                elif _will_be_beaten(world, unit, enemy) and \
+                        enemy in unit.get_last_turn_shooters() and \
+                        unit.check_shield_activation() == ActivateShieldResult.SHIELD_ACTIVATION_VALID:
+                    unit.activate_shield()
+                    move_taken = True
+                    break
+                elif _can_hit(unit, enemy):
+                    unit.shoot_at(enemy)
+                    move_taken = True
                     break
             # really got nothing to do :-(
-            if not shot:
+            if not move_taken:
                 unit.standby()
+
+
 
 
     @staticmethod
@@ -350,7 +456,7 @@ class PlayerAI:
         elif friendly_unit.check_shot_against_enemy(enemy_unit) == ShotResult.CAN_HIT_ENEMY:
             weapon_point = -1 * weapon_point * 5
 
-        if _can_beat(friendly_unit, enemy_unit):
+        if _can_beat(world, friendly_unit, enemy_unit):
             weapon_point -= 40
 
         else:
@@ -368,20 +474,6 @@ class PlayerAI:
     def _get_damage_by_weapon(weapon_type):
         return weapon_type.value[1]
 
-    '''
-    Attacking functions
-    '''
-
-    @staticmethod
-    def _attack(friendly_unit, enemy_unit):
-        check_shot = friendly_unit.check_shot_against_enemy(enemy_unit)
-        if check_shot == ShotResult.TARGET_OUT_OF_RANGE or check_shot == ShotResult.BLOCKED_BY_WORLD :
-            friendly_unit.move_to_destination(enemy_unit.position)
-        elif check_shot == ShotResult.CAN_HIT_ENEMY:
-            friendly_unit.shoot_at(enemy_unit)
-        else:
-            return check_shot
-
 
 
 
@@ -391,4 +483,8 @@ class PlayerAI:
 2. team strategy - move strongest to enemy's weakest
 3. weapon choice
 4. hide behind shielded ally
+'''
+
+'''
+when shield is open, try running towards allies..
 '''
