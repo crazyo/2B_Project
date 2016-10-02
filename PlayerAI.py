@@ -7,7 +7,7 @@ from PythonClientAPI.libs.Game.World import *
 
 
 # just need a number that is small enough
-SMALLEST_NUMBER = -10000
+SMALLEST_NUMBER = -100000
 OUR_TEAM = None
 
 ###################################
@@ -80,7 +80,6 @@ def _get_to_control_point_utility(world, tile_pos):
         #   should consider taking the tile that control point is on if
         #   there are enemies around so as to occupy more spots
         #   which is considering distance == 0
-    print("_get_to_control_point_utility:" + str(utility))
     return utility
 
 def _get_to_pickup_utility(world, tile_pos):
@@ -94,7 +93,6 @@ def _get_to_pickup_utility(world, tile_pos):
             utility += (_get(world) / distance) ** 2
         else:
             utility += _get(world) ** 2 * 2
-    print("_get_to_pickup_utility:" + str(utility))
     return utility
 
 
@@ -192,7 +190,8 @@ class PlayerAI:
             unit.move(direction)
             visited_tiles.append(neighbour["position"])
             all_moving_units.remove(neighbour["unit_index"])
-        print(all_moving_units)
+
+        # remaining units that did not move anywhere
         for unit_index in all_moving_units:
             unit = friendly_units[unit_index]
             # got nothing better to do, might as well fire!
@@ -204,9 +203,8 @@ class PlayerAI:
                     unit.shoot_at(enemy)
                     shot = True
                     break
-            # really nothing to do :-(
+            # really got nothing to do :-(
             if not shot:
-                print("unit {} does not know what to do...".format(friendly_units[unit_index].call_sign))
                 unit.standby()
 
 
