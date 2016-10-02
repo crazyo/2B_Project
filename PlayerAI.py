@@ -239,3 +239,18 @@ class PlayerAI:
             return weapon_type[1]
         else :
             return 0
+
+    '''
+    Attacking functions
+    '''
+
+    @staticmethod
+    def _attack(friendly_unit, enemy_unit):
+        check_shot = friendly_unit.check_shot_against_enemy(enemy_unit)
+        if check_shot == ShotResult.TARGET_OUT_OF_RANGE or check_shot == ShotResult.BLOCKED_BY_WORLD :
+            friendly_unit.move_to_destination(enemy_unit.position)
+        elif check_shot == ShotResult.CAN_HIT_ENEMY:
+            friendly_unit.shoot_at(enemy_unit)
+        else:
+            return check_shot
+
