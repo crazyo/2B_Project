@@ -72,9 +72,7 @@ def _get_to_control_point_utility(world, tile_pos):
         #   should I skip control points I already own?
         if cp.controlling_team == OUR_TEAM:
             continue
-        # TODO:
-        #   this is a private method, can I actually use it?
-        distance = world._get_next_direction_in_path_and_length(tile_pos, cp.position, True)[1]
+        distance = world.get_path_length(tile_pos, cp.position)
         _get = _get_mainframe_utility if cp.is_mainframe else _get_control_point_utility
         if distance:
             utility += (_get(world) / distance) ** 2
@@ -87,9 +85,7 @@ def _get_to_control_point_utility(world, tile_pos):
 def _get_to_pickup_utility(world, tile_pos):
     utility = 0
     for pickup in world.pickups:
-        # TODO:
-        #   this is a private method, can I actually use it?
-        distance = world._get_next_direction_in_path_and_length(tile_pos, pickup.position, True)[1]
+        distance = world.get_path_length(tile_pos, pickup.position)
         _get = _get_repair_kit_utility if pickup.pickup_type == PickupType.REPAIR_KIT else \
             _get_shield_utility if pickup.pickup_type == PickupType.SHIELD else \
             _get_weapon_utility
