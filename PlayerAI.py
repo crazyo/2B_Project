@@ -6,6 +6,7 @@ from PythonClientAPI.libs.Game.World import *
 
 # just need a number that is small enough
 SMALLEST_NUMBER = -10000
+OUR_TEAM = None
 
 ###################################
 # utility constants and functions #
@@ -65,19 +66,28 @@ def _get_weapon_utility(world):
 def _get_to_control_point_utility(world, tile_pos):
     utility = 0
     for cp in world.control_points:
-        distance = PU.chebyshev_distance(tile_pos, cp.position)
+        # TODO:
+        #   should I skip control points I already own?
+        if cp.controlling_team == OUR_TEAM:
+            continue
+        # TODO:
+        #   this is a private method, can I actually use it?
+        distance = world._get_next_direction_in_path_and_length(tile_pos, cp.position, True)[1]
         _get = _get_mainframe_utility if cp.is_mainframe else _get_control_point_utility
         if distance:
             utility += (_get(world) / distance) ** 2
         # TODO:
         #   should consider taking the tile that control point is on if
         #   there are enemies around so as to occupy more spots
+        #   which is considering distance == 0
     return utility
 
 def _get_to_pickup_utility(world, tile_pos):
     utility = 0
     for pickup in world.pickups:
-        distance = PU.chebyshev_distance(tile_pos, pickup.position)
+        # TODO:
+        #   this is a private method, can I actually use it?
+        distance = world._get_next_direction_in_path_and_length(tile_pos, pickup.position, True)[1]
         _get = _get_repair_kit_utility if pickup.pickup_type == PickupType.REPAIR_KIT else \
             _get_shield_utility if pickup.pickup_type == PickupType.SHIELD else \
             _get_weapon_utility
@@ -89,14 +99,30 @@ def _get_to_pickup_utility(world, tile_pos):
 
 
 class PlayerAI:
+
     def __init__(self):
         pass
 
     def do_move(self, world, enemy_units, friendly_units):
+        global OUR_TEAM
+        OUR_TEAM = friendly_units[0].team
+
         for unit in friendly_units:
             # pick up any pickup if unit is on the tile
             if unit.check_pickup_result() == PickupResult.PICK_UP_VALID:
                 unit.pickup_item_at_position()
+                continue
+
+            # shoot any enemy that is in range
+            # TODO:
+            #   need to calculate utility as well actually
+            shot = False
+            for enemy in enemy_units:
+                if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
+                    unit.shoot_at(enemy)
+                    shot = True
+                    break
+            if shot:
                 continue
 
             neighbours = [(unit.position[0] - 1, unit.position[1] - 1),
@@ -124,7 +150,7 @@ class PlayerAI:
             if best_neighbour_direction:
                 unit.move(best_neighbour_direction)
             else:
-                unit.move(Direction.NOWHERE)
+                unit.standby()
 
     @staticmethod
     def find_weakest_unit(units):
