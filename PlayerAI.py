@@ -1,3 +1,5 @@
+import math
+
 from PythonClientAPI.libs.Game import PointUtils as PU
 from PythonClientAPI.libs.Game.Entities import *
 from PythonClientAPI.libs.Game.Enums import *
@@ -97,6 +99,15 @@ def _get_to_pickup_utility(world, tile_pos):
             utility += _get(world) ** 2 * 2
     return utility
 
+def _can_beat(unit, enemy):
+    if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
+        if enemy.current_weapon_type.get_range() < PU.chebyshev_distance(unit.position, enemy.position):
+            return True
+        num_unit_round = math.ceil(enemy.health / unit.current_weapon_type.get_damage())
+        num_enemy_round = math.ceil(unit.health / enemy.current_weapon_type.get_damage())
+        if num_unit_round < num_enemy_round:
+            return True
+    return False
 
 class PlayerAI:
 
@@ -118,7 +129,7 @@ class PlayerAI:
             #   need to calculate utility as well actually
             shot = False
             for enemy in enemy_units:
-                if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
+                if _can_beat(unit, enemy):
                     unit.shoot_at(enemy)
                     shot = True
                     break
