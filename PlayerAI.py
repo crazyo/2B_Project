@@ -1,5 +1,5 @@
 import math
-
+import copy
 from PythonClientAPI.libs.Game import PointUtils as PU
 from PythonClientAPI.libs.Game.Entities import *
 from PythonClientAPI.libs.Game.Enums import *
@@ -98,17 +98,19 @@ def _get_to_pickup_utility(world, tile_pos):
     return utility
 
 
-def _get_enemy_utility(world, tile_pos, enemy_units):
+def _get_enemy_utility(world, friendly_unit, neighbour, enemy_units):
     utility =  0
+    potential_friendly_unit = copy.copy(friendly_unit)
+    potential_friendly_unit.position = neighbour
     for enemy in enemy_units:
-        distance = world.get_path_length(tile_pos, enemy.position)
-        enemy_power = PlayerAI.get_indivadule_power_value(world, enemy, tile_pos)
+        distance = world.get_path_length(neighbour, enemy.position)
+        enemy_power = PlayerAI.get_indivadule_power_value(world, enemy, potential_friendly_unit)
         if distance:
             utility += (enemy_power/distance) ** 2
         else:
             utility += enemy_power ** 2 * 2
     print("_get_enemy_utility:" + str(utility))
-    return -1 * utility
+    return utility
 
 # TODO:
 #   consider multiple enemies and multiple allies?
@@ -158,6 +160,8 @@ class PlayerAI:
             if shot:
                 continue
 
+
+
             # moving...
             all_moving_units.append(i)
             neighbours = [(unit.position[0] - 1, unit.position[1] - 1),
@@ -173,7 +177,7 @@ class PlayerAI:
                     "unit_index": i,
                     "position": neighbour,
                     "utility": _get_to_control_point_utility(world, neighbour) +
-                    _get_to_pickup_utility(world, neighbour)
+                    _get_to_pickup_utility(world, neighbour) - _get_enemy_utility(world, unit, neighbour, enemy_units)
                 } for neighbour in neighbours if unit.check_move_in_direction(
                     Direction.from_to(unit.position, neighbour)
                 ) == MoveResult.MOVE_VALID
@@ -277,17 +281,23 @@ class PlayerAI:
         return density
 
 
-    BASE_UTILITY_SHIELD_POWER_PER_TURN = 10
+    BASE_UTILITY_SHIELD_POWER_PER_TURN =5
     @staticmethod
-    def get_indivadule_power_value(world, enemy_unit,position):
+    def get_indivadule_power_value(world, enemy_unit, friendly_unit):
         '''
         Returns: the unit's power value based on HP, Sailed and Weapon
         '''
 
         weapon_point = PlayerAI._get_damage_by_weapon(enemy_unit.current_weapon_type)
         # if the enemy unit can hit the friendly unit
-        if ProjectileWeapon.check_shot_against_point(enemy_unit, position, world, enemy_unit.current_weapon_type):
-            weapon_point = weapon_point * 10
+        if ProjectileWeapon.check_shot_against_point(enemy_unit, friendly_unit.position, world, enemy_unit.current_weapon_type) == ShotResult.CAN_HIT_ENEMY:
+            weapon_point = weapon_point * 5
+        # if the enemy cannot hit the friendly unit while the friendly unit can hit enemy
+        elif friendly_unit.check_shot_against_enemy(enemy_unit) == ShotResult.CAN_HIT_ENEMY:
+            weapon_point = -1 * weapon_point
+        else:
+            weapon_point = 0
+
         sheild_turn_point = enemy_unit.shielded_turns_remaining * PlayerAI.BASE_UTILITY_SHIELD_POWER_PER_TURN
         sheild_number_point = enemy_unit.num_shields *  sheild_turn_point * 5
         HP_point = enemy_unit.health
@@ -317,7 +327,7 @@ class PlayerAI:
 
 
 ''' TODO List:
-0. enemy utility
+0. enemy utility -- can beat
 1. shield activation
 2. team strategy - move strongest to enemy's weakest
 3. weapon choice
