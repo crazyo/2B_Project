@@ -122,6 +122,37 @@ def _can_beat(unit, enemy):
             return True
     return False
 
+def _activate_sheild(world, unit, enemy_unites):
+    shooters = unit.get_last_turn_shooters()
+    attacking_enemies = _find_attacking_enemy(world, unit, enemy_unites)
+    print(attacking_enemies)
+    total_potential_damage = 0
+    for ele in attacking_enemies:
+         total_potential_damage += ele.current_weapon_type.get_damage()
+    print(total_potential_damage)
+    if ((shooters != [] and len(attacking_enemies) >= 2) or (total_potential_damage >= unit.health - 20 and unit.health > 0)):
+        print("kaiudn!!!")
+        # Check if a shield is already active before we activate a new one
+        print(unit.check_shield_activation())
+        print(unit.health)
+        if unit.check_shield_activation() == ActivateShieldResult.SHIELD_ACTIVATION_VALID and \
+            unit.shielded_turns_remaining <= 0:
+            # Activate a shield
+            unit.activate_shield()
+
+
+def _find_attacking_enemy(world, unit, enemy_units):
+    '''
+     find the enemy who can hit the given unit
+    '''
+    attacking_enemies =[]
+    for enemy in enemy_units:
+        if ProjectileWeapon.check_shot_against_point(enemy, unit.position, world, enemy.current_weapon_type) == ShotResult.CAN_HIT_ENEMY:
+            attacking_enemies.append(enemy)
+    return attacking_enemies
+
+
+
 
 class PlayerAI:
 
@@ -141,6 +172,10 @@ class PlayerAI:
         neighbour_maps_for_all_moving_units = []
         for i in range(len(friendly_units)):
             unit = friendly_units[i]
+
+            # activate the sheild
+
+
             # pick up any pickup if unit is on the tile
             if unit.check_pickup_result() == PickupResult.PICK_UP_VALID:
                 unit.pickup_item_at_position()
@@ -151,12 +186,13 @@ class PlayerAI:
             #   need to calculate utility as well actually
             shot = False
             for enemy in enemy_units:
-                if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
+                if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY and unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
                     unit.shoot_at(enemy)
                     shot = True
                     break
             if shot:
                 continue
+
 
 
 
@@ -211,6 +247,7 @@ class PlayerAI:
             if not shot:
                 unit.standby()
 
+        _activate_sheild(world, unit, enemy_units)
 
     @staticmethod
     def find_weakest_unit(units):
