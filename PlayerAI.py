@@ -21,7 +21,24 @@ def _get_mainframe_utility(world):
         2. the number of mainframe left for enemy to capture
         3. the total number of mainframes on the map
     '''
-    return BASE_UTILITY_MAINFRAME
+    number_of_ally_mainframes = 0
+    number_of_enemy_mainframes = 0
+    number_of_neutral_mainframes = 0
+    for cp in world.control_points:
+        if not cp.is_mainframe:
+            continue
+        if cp.controlling_team == OUR_TEAM:
+            number_of_ally_mainframes += 1
+        elif cp.controlling_team == Team.NONE:
+            number_of_neutral_mainframes += 1
+        else:
+            number_of_enemy_mainframes += 1
+    if not number_of_ally_mainframes:
+        return BASE_UTILITY_MAINFRAME * 2
+    elif number_of_enemy_mainframes == 1 and number_of_neutral_mainframes <= 1:
+        return BASE_UTILITY_MAINFRAME * 2
+    else:
+        return BASE_UTILITY_MAINFRAME
 
 BASE_UTILITY_CONTROL_POINT = 100
 def _get_control_point_utility(world):
@@ -107,7 +124,6 @@ def _get_enemy_utility(world, friendly_unit, neighbour, enemy_units):
             utility += (enemy_power/distance) ** 2
         else:
             utility += enemy_power ** 2 * 2
-    print("_get_enemy_utility:" + str(utility))
     return utility
 
 # TODO:
@@ -122,23 +138,26 @@ def _can_beat(unit, enemy):
             return True
     return False
 
+
 def _activate_sheild(world, unit, enemy_unites):
     shooters = unit.get_last_turn_shooters()
     attacking_enemies = _find_attacking_enemy(world, unit, enemy_unites)
-    print(attacking_enemies)
     total_potential_damage = 0
     for ele in attacking_enemies:
-         total_potential_damage += ele.current_weapon_type.get_damage()
+        total_potential_damage += ele.current_weapon_type.get_damage() * len(attacking_enemies)
     print(total_potential_damage)
-    if ((shooters != [] and len(attacking_enemies) >= 2) or (total_potential_damage >= unit.health - 20 and unit.health > 0)):
-        print("kaiudn!!!")
-        # Check if a shield is already active before we activate a new one
-        print(unit.check_shield_activation())
+    print(unit.health)
+    if (total_potential_damage >= unit.health):
         print(unit.health)
-        if unit.check_shield_activation() == ActivateShieldResult.SHIELD_ACTIVATION_VALID and \
-            unit.shielded_turns_remaining <= 0:
+        print("hey, needs to activate")
+        # Check if a shield is already active before we activate a new one
+        if (unit.check_shield_activation() == ActivateShieldResult.SHIELD_ACTIVATION_VALID and
+            not unit.shielded_turns_remaining):
             # Activate a shield
+            print("activating")
             unit.activate_shield()
+            return True
+    return False
 
 
 def _find_attacking_enemy(world, unit, enemy_units):
@@ -173,12 +192,12 @@ class PlayerAI:
         for i in range(len(friendly_units)):
             unit = friendly_units[i]
 
-            # activate the sheild
-
-
             # pick up any pickup if unit is on the tile
             if unit.check_pickup_result() == PickupResult.PICK_UP_VALID:
                 unit.pickup_item_at_position()
+                continue
+
+            if _activate_sheild(world, unit, enemy_units):
                 continue
 
             # shoot any enemy that is in range
@@ -247,7 +266,6 @@ class PlayerAI:
             if not shot:
                 unit.standby()
 
-        _activate_sheild(world, unit, enemy_units)
 
     @staticmethod
     def find_weakest_unit(units):
