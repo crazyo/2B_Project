@@ -287,14 +287,20 @@ class PlayerAI:
         '''
 
         weapon_point = PlayerAI._get_damage_by_weapon(enemy_unit.current_weapon_type)
+
         # if the enemy unit can hit the friendly unit
         if ProjectileWeapon.check_shot_against_point(enemy_unit, friendly_unit.position, world, enemy_unit.current_weapon_type) == ShotResult.CAN_HIT_ENEMY:
             weapon_point = weapon_point * 5
         # if the enemy cannot hit the friendly unit while the friendly unit can hit enemy
         elif friendly_unit.check_shot_against_enemy(enemy_unit) == ShotResult.CAN_HIT_ENEMY:
-            weapon_point = -1 * weapon_point
+            weapon_point = -1 * weapon_point * 5
+
+        if _can_beat(friendly_unit, enemy_unit):
+            weapon_point -= 40
+
         else:
             weapon_point = 0
+
 
         sheild_turn_point = enemy_unit.shielded_turns_remaining * PlayerAI.BASE_UTILITY_SHIELD_POWER_PER_TURN
         sheild_number_point = enemy_unit.num_shields *  sheild_turn_point * 5
@@ -325,7 +331,7 @@ class PlayerAI:
 
 
 ''' TODO List:
-0. enemy utility -- can beat
+0. enemy utility -- can beat done
 1. shield activation
 2. team strategy - move strongest to enemy's weakest
 3. weapon choice
