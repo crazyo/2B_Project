@@ -101,7 +101,7 @@ def _can_beat(unit, enemy):
             return True
         num_unit_round = math.ceil(enemy.health / unit.current_weapon_type.get_damage())
         num_enemy_round = math.ceil(unit.health / enemy.current_weapon_type.get_damage())
-        if num_unit_round < num_enemy_round:
+        if num_unit_round <= num_enemy_round:
             return True
     return False
 
@@ -175,9 +175,20 @@ class PlayerAI:
             unit.move(direction)
             visited_tiles.append(neighbour["position"])
             all_moving_units.remove(neighbour["unit_index"])
+        print(all_moving_units)
         for unit_index in all_moving_units:
-            friendly_units[unit_index].standby()
-            print("unit {} does not know what to do...".format(friendly_units[unit_index].call_sign))
+            unit = friendly_units[unit_index]
+            # got nothing better to do, might as well fire!
+            shot = False
+            for enemy in enemy_units:
+                if unit.check_shot_against_enemy(enemy) == ShotResult.CAN_HIT_ENEMY:
+                    unit.shoot_at(enemy)
+                    shot = True
+                    break
+            # really nothing to do :-(
+            if not shot:
+                print("unit {} does not know what to do...".format(friendly_units[unit_index].call_sign))
+                unit.standby()
 
 
     @staticmethod
