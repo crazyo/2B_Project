@@ -99,9 +99,10 @@ class PlayerAI:
         HP_point = unit.health
         total_point = weapon_point + sheild_turn_point + sheild_number_point + HP_point
         return total_point
-
-    def _get_damage_by_weapon(type, range):
-        if type[0] >= range:
-            return type[1]
+    
+    @staticmethod
+    def _get_damage_by_weapon(weapon_type, range):
+        if weapon_type[0] >= range:
+            return weapon_type[1]
         else :
             return 0
