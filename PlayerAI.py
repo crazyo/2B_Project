@@ -240,32 +240,31 @@ class PlayerAI:
         #     "unit_index": which unit does this neighbour belong to
         all_moving_units = []
         neighbour_maps_for_all_moving_units = []
-        current_fire_target = None
         for i in range(len(friendly_units)):
             unit = friendly_units[i]
 
-            # when shield is on, go to allies
-            if unit.shielded_turns_remaining:
-                all_moving_units.append(i)
-                neighbours = [(unit.position[0] - 1, unit.position[1] - 1),
-                              (unit.position[0] - 1, unit.position[1]),
-                              (unit.position[0] - 1, unit.position[1] + 1),
-                              (unit.position[0], unit.position[1] - 1),
-                              (unit.position[0], unit.position[1] + 1),
-                              (unit.position[0] + 1, unit.position[1] - 1),
-                              (unit.position[0] + 1, unit.position[1]),
-                              (unit.position[0] + 1, unit.position[1] + 1)]
-                neighbour_maps_for_current_unit = [
-                    {
-                        "unit_index": i,
-                        "position": neighbour,
-                        "utility": _get_to_ally_utility(world, friendly_units, i)
-                    } for neighbour in neighbours if unit.check_move_in_direction(
-                        Direction.from_to(unit.position, neighbour)
-                    ) == MoveResult.MOVE_VALID
-                ]
-                neighbour_maps_for_all_moving_units.extend(neighbour_maps_for_current_unit)
-                continue
+            # # when shield is on, go to allies
+            # if unit.shielded_turns_remaining:
+            #     all_moving_units.append(i)
+            #     neighbours = [(unit.position[0] - 1, unit.position[1] - 1),
+            #                   (unit.position[0] - 1, unit.position[1]),
+            #                   (unit.position[0] - 1, unit.position[1] + 1),
+            #                   (unit.position[0], unit.position[1] - 1),
+            #                   (unit.position[0], unit.position[1] + 1),
+            #                   (unit.position[0] + 1, unit.position[1] - 1),
+            #                   (unit.position[0] + 1, unit.position[1]),
+            #                   (unit.position[0] + 1, unit.position[1] + 1)]
+            #     neighbour_maps_for_current_unit = [
+            #         {
+            #             "unit_index": i,
+            #             "position": neighbour,
+            #             "utility": _get_to_ally_utility(world, friendly_units, i)
+            #         } for neighbour in neighbours if unit.check_move_in_direction(
+            #             Direction.from_to(unit.position, neighbour)
+            #         ) == MoveResult.MOVE_VALID
+            #     ]
+            #     neighbour_maps_for_all_moving_units.extend(neighbour_maps_for_current_unit)
+            #     continue
 
             # activate shield if the unit could die
             if _could_die(world, unit, enemy_units) and \
@@ -291,7 +290,6 @@ class PlayerAI:
                     continue
                 if _can_beat(world, unit, enemy):
                     unit.shoot_at(enemy)
-                    current_fire_target = enemy
                     move_taken = True
                     break
                 elif _will_be_beaten(world, unit, enemy) and \
@@ -302,7 +300,6 @@ class PlayerAI:
                     break
                 elif _can_hit(unit, enemy):
                     unit.shoot_at(enemy)
-                    current_fire_target = enemy
                     move_taken = True
                     break
             if move_taken:
@@ -328,9 +325,6 @@ class PlayerAI:
                     Direction.from_to(unit.position, neighbour)
                 ) == MoveResult.MOVE_VALID
             ]
-            # if current_fire_target:
-            #     for neightbour_map in neighbour_maps_for_current_unit:
-            #         neightbour_map["utility"] += _get_to_fire_target_utility(world, neighbour, current_fire_target)
             neighbour_maps_for_all_moving_units.extend(neighbour_maps_for_current_unit)
 
         # assign move for each unit considering corporation
